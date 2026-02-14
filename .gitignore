@@ -12,6 +12,10 @@ ENV/
 # ChromaDB
 chroma_db/
 
+# Document UI sessions and uploads
+sessions/
+uploads/
+
 # Environment variables
 .env
 .env.local

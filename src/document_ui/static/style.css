@@ -1,0 +1,127 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f6f7fb;
+  margin: 0;
+}
+
+.container {
+  max-width: 760px;
+  margin: 3rem auto;
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+.subtitle {
+  color: #5b6271;
+  margin-top: -0.5rem;
+}
+
+#upload-form,
+#email-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+input[type="email"],
+input[type="file"] {
+  padding: 0.6rem;
+}
+
+input[type="file"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.file-label {
+  font-weight: 600;
+}
+
+button {
+  background: #2e6cf6;
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button:disabled {
+  background: #9cb5f9;
+  cursor: not-allowed;
+}
+
+.hidden {
+  display: none;
+}
+
+.progress-wrapper {
+  width: 100%;
+  background: #e8ebf3;
+  border-radius: 999px;
+  overflow: hidden;
+  height: 12px;
+}
+
+.progress-bar {
+  width: 0;
+  height: 12px;
+  background: #18a957;
+  transition: width 0.3s ease;
+}
+
+.result {
+  margin-top: 1rem;
+  font-weight: 600;
+}
+
+.result.success {
+  color: #0e7a3e;
+}
+
+.result.error {
+  color: #b22a2a;
+}
+
+.table-section {
+  margin-top: 1.5rem;
+}
+
+#files-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#files-table th,
+#files-table td {
+  border: 1px solid #dce1ec;
+  padding: 0.6rem;
+  text-align: left;
+}
+
+#files-table th {
+  background: #f2f5fc;
+}
+
+.delete-btn {
+  background: #b22a2a;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.delete-btn:hover {
+  background: #8a1f1f;
+}
+
+.delete-btn:disabled {
+  background: #d4a5a5;
+  cursor: not-allowed;
+}
