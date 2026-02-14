@@ -1,0 +1,20 @@
+# Global configuration for RAG system
+
+embedding:
+  provider: "ollama"  # Options: "ollama" or "openai"
+  model: "mxbai-embed-large"  # Ollama model name
+  # For OpenAI:
+  # provider: "openai"
+  # model: "text-embedding-3-small"
+  # api_key: "your-openai-api-key"  # Optional, can use env var OPENAI_API_KEY
+
+ollama:
+  base_url: "http://localhost:11434"  # Default Ollama URL
+
+chromadb:
+  db_path: "./chroma_db"
+  collection_name: "documents"
+
+chunking:
+  chunk_size_tokens: 256  # Max tokens per chunk
+  overlap_sentences: 1  # Number of sentences to overlap between chunks

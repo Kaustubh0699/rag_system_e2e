@@ -1,0 +1,27 @@
+You are coding in a modular, assetized architecture.
+
+Hard rules:
+- Every capability is a separate component (an “asset”) with its own folder under /src.
+- No giant files. Keep modules small and cohesive.
+- Each asset must expose a clear interface via src/<asset>/__init__.py and src/<asset>/interfaces.py.
+- Each asset must include:
+  - README.md describing purpose, inputs/outputs, and examples
+  - config.py (pydantic settings if needed)
+  - tests/ with at least 1 unit test per public function
+- Do NOT introduce a vector DB or graph DB unless explicitly requested.
+
+Project conventions:
+- Python 3.11+
+- Use type hints everywhere.
+- Prefer dataclasses or pydantic models for IO boundaries.
+- Logging: standard library logging, no print.
+- Errors: raise typed exceptions in src/<asset>/errors.py.
+
+When you modify code:
+- Update the asset README.md.
+- Add/adjust tests.
+- Avoid unnecessary dependencies.
+
+How to respond:
+- Provide a short plan, then code edits.
+- Keep changes minimal and aligned to the current module.
