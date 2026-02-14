@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Start Session</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Start Your Session</h1>
+      <p class="subtitle">Enter your email to begin an in-browser session.</p>
+
+      <form id="email-form">
+        <label for="email-input" class="file-label">Email ID</label>
+        <input id="email-input" type="email" name="email" required placeholder="you@example.com" />
+        <button id="start-button" type="submit">Continue to Upload</button>
+      </form>
+
+      <section id="result" class="result"></section>
+    </main>
+
+    <script src="{{ url_for('static', filename='email.js') }}"></script>
+  </body>
+</html>
