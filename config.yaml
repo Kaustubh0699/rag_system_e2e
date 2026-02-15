@@ -18,3 +18,16 @@ chromadb:
 chunking:
   chunk_size_tokens: 256  # Max tokens per chunk
   overlap_sentences: 1  # Number of sentences to overlap between chunks
+
+retriever:
+  dense_top_k: 20  # Candidates from dense vector search
+  sparse_top_k: 20  # Candidates from sparse BM25 search
+  hybrid_top_k: 30  # Combined candidates before reranking
+  final_top_k: 5  # Number of final chunks returned
+  score_threshold: 0.7  # Minimum rerank score to include (0.0 = no filter)
+  dense_weight: 0.6  # Weight for dense score in hybrid ranking
+  sparse_weight: 0.4  # Weight for sparse score in hybrid ranking
+  reranker:
+    provider: "bge"
+    model: "BAAI/bge-reranker-base"
+    # api_key: "your-cohere-api-key"  # Optional, can use COHERE_API_KEY env var
