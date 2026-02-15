@@ -16,6 +16,7 @@ A modular, session-based RAG system that lets users upload documents (PDF, PPTX)
 - [Usage](#usage)
 - [Offline Use](#offline-use)
 - [Testing](#testing)
+- [Test scripts and suites](#test-scripts-and-suites)
 - [Module READMEs](#module-readmes)
 
 ---
@@ -351,13 +352,35 @@ See **`src/common/config.py`** for `DEFAULT_CONFIG` and **`get_effective_collect
 
 ## Testing
 
-- Run tests from the project root (with the virtual environment activated):
+Run all tests from the project root (with the virtual environment activated):
 
-  ```bash
-  python -m pytest src/tests/ -v
-  ```
+```bash
+python -m pytest src/tests/ -v
+```
 
-- Module-level READMEs (see below) may describe extra test or usage details.
+Module-level READMEs (see below) may describe extra test or usage details.
+
+---
+
+## Test scripts and suites
+
+### Standalone test script
+
+| Script | How to run | Tests performed |
+|--------|------------|-----------------|
+| **`scripts/test_multi_user.py`** | **Mock (no server or Ollama):** `python scripts/test_multi_user.py --mock`<br><br>**Live server:** Start the Document UI (`python -m src.document_ui.app`), then:<br>`python scripts/test_multi_user.py [BASE_URL]`<br>Default BASE_URL: `http://localhost:8000`<br><br>Run from project root (or set `PYTHONPATH`) so `src` can be imported. | **Test 1 – Session isolation:** Two users (different emails) get separate sessions; each sees only their own uploaded files; User B does not see User A’s files, and User A still sees only their file after User B uploads.<br><br>**Test 2 – Same email, different casing:** Same email with different casing (e.g. `carol_multi@test.com` vs `CAROL_MULTI@test.com`) returns to the same session and sees the same file list (session persistence). |
+
+- In **mock** mode the script uses the Flask test client and mocks `ingest_document`, so no embedding server (Ollama) or live Document UI is required.
+- In **live** mode the script calls the real APIs over HTTP; the server must be running and embeddings must succeed (e.g. Ollama with the configured embedding model) or upload/store steps will fail.
+
+### Pytest test modules (`src/tests/`)
+
+| Module | How to run | Tests performed |
+|--------|------------|-----------------|
+| **`test_multi_user_api.py`** | `python -m pytest src/tests/test_multi_user_api.py -v` | **Session isolation:** Two users (different emails) have isolated file lists; each uploads a file and sees only their own. **Same-email persistence:** Same email with different casing restores the same session and file list. Uses mocked `ingest_document`; no server. |
+| **`test_document_upload_ui.py`** | `python -m pytest src/tests/test_document_upload_ui.py -v` | **Session:** Start session requires valid email (invalid email → 400). **Upload:** Upload requires an active session. **Ingestion job:** Updates session files on completion; rejects legacy `.ppt`. **Chat:** Chat endpoint requires documents in session; returns answer when pipeline is mocked; stream endpoint yields NDJSON chunks. |
+| **`test_response_generator.py`** | `python -m pytest src/tests/test_response_generator.py -v` | **ResponseGenerator:** Two LLM calls (grounding + answer), session history tracking; history trimmed to `history_keep`. **Streaming:** `generate_stream` yields tokens and updates history. |
+| **`test_retriever_agent.py`** | `python -m pytest src/tests/test_retriever_agent.py -v` | **RetrieverAgent:** Hybrid search combines dense and sparse scores; history limit respected. Uses mocked collection and embeddings. |
 
 ---
 
