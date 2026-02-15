@@ -564,4 +564,7 @@ def _cleanup_session(app_session_id: str, delete_data: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    create_app().run(host="0.0.0.0", port=8000, debug=True)
+    import os
+    port = int(os.environ.get("PORT", "8000"))
+    debug = os.environ.get("FLASK_DEBUG", "false").lower() in ("1", "true", "yes")
+    create_app().run(host="0.0.0.0", port=port, debug=debug)

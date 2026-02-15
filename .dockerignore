@@ -1,0 +1,38 @@
+# Git and IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+.cursor/
+.cursorrules
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Local runtime data (created in container)
+chroma_db/
+sessions/
+uploads/
+data/
+
+# Dev and test
+*.ipynb
+.ipynb_checkpoints/
+test_module.ipynb
+scripts/
+src/tests/
+*.log
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
