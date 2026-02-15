@@ -7,18 +7,18 @@ A Flask-based web interface for uploading and processing PDF and PPTX documents 
 1. **Start Session**: User enters email address on the start page
 2. **Redirect**: User is redirected to the upload page with an active session
 3. **Upload & Process**: User uploads documents which are processed into a **session-scoped ChromaDB**
-4. **Track Progress**: Upload button is disabled while processing, with real-time progress updates
+4. **Track Progress**: Upload button and file input are disabled while processing, with real-time progress updates
 5. **View Results**: Session table shows all processed files with chunk counts
-6. **Session Cleanup**: Session data is automatically cleaned up when the browser tab is closed (via `beforeunload` beacon)
+6. **Persistent Sessions**: Sessions are **persistent** - if you close the tab and log in again with the same email, you'll see all previously processed files and can continue adding more documents to the same ChromaDB
 
 ## Features
 
 - **Session Isolation**: Each user gets their own ChromaDB instance (identified by email)
+- **Persistent Sessions**: Sessions persist across browser sessions - log in with the same email to resume
 - **File Upload**: Upload PDF, PPT, or PPTX files through a simple web interface
 - **Background Processing**: Documents are processed asynchronously in background threads
 - **Real-time Status**: Poll-based status updates with visual progress bar
-- **Session Management**: Track all processed files per session
-- **Automatic Cleanup**: Session data cleaned up on tab close
+- **Session Management**: Track all processed files per session, automatically loaded from ChromaDB
 
 ## Prerequisites
 
@@ -188,7 +188,14 @@ Get list of all processed files for the current session.
 
 ### POST `/api/session/end`
 
-End the current session and clean up all session data.
+End the current session. Optionally delete session data.
+
+**Request (optional):**
+```json
+{
+  "delete_data": true  // If true, deletes session directory and ChromaDB
+}
+```
 
 **Response:**
 ```json
@@ -196,6 +203,8 @@ End the current session and clean up all session data.
   "message": "Session closed."
 }
 ```
+
+**Note**: By default, session data is NOT deleted - it persists for future logins. Set `delete_data: true` to permanently remove the session.
 
 ## Session Management
 
@@ -208,10 +217,12 @@ Each session creates:
 
 ### Session Isolation
 
-- Each email address gets a unique session ID
+- Each email address gets a unique session ID (derived from email hash)
 - Each session has its own ChromaDB instance
 - Jobs are scoped to sessions (users can only see their own jobs)
-- Session data is automatically cleaned up on tab close
+- **Sessions are persistent** - closing the browser tab does NOT delete session data
+- When you log in again with the same email, you'll see all previously processed files
+- Existing files are automatically loaded from ChromaDB when resuming a session
 
 ### File Storage
 

@@ -1,0 +1,18 @@
+grounding_prompt:
+  task: "Rewrite the user's latest question into a standalone grounded retrieval query."
+  instructions:
+    - "Use conversation history only to resolve references like pronouns or ellipsis."
+    - "Do not add facts that are not implied by the user messages."
+    - "Preserve intent, constraints, entities, and requested output format."
+    - "Keep the rewritten query concise and specific for retrieval."
+  output: "Return only the rewritten query as plain text."
+
+response_prompt:
+  task: "Generate a grounded answer using only the provided retrieved chunks."
+  instructions:
+    - "Use retrieved chunks as the single source of truth."
+    - "If evidence is missing, say you do not have enough context."
+    - "Do not fabricate citations, facts, numbers, or names."
+    - "Prefer concise, directly relevant answers."
+    - "Reference chunk ids in the answer when citing evidence, e.g., [chunk_12]."
+  output: "Return a final user-facing answer in plain text."

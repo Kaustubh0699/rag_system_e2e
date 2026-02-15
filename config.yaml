@@ -2,32 +2,46 @@
 
 embedding:
   provider: "ollama"  # Options: "ollama" or "openai"
-  model: "mxbai-embed-large"  # Ollama model name
+  model: "nomic-embed-text"  # Ollama model name (max 512 tokens per chunk for this model)
   # For OpenAI:
   # provider: "openai"
   # model: "text-embedding-3-small"
   # api_key: "your-openai-api-key"  # Optional, can use env var OPENAI_API_KEY
 
 ollama:
-  base_url: "http://localhost:11434"  # Default Ollama URL
+  base_url: "http://127.0.0.1:11434"  # Use 127.0.0.1 to avoid DNS (works offline)
 
 chromadb:
   db_path: "./chroma_db"
   collection_name: "documents"
+  embedding_scoped_collection: true  # Use separate collection per embedding model (avoids dimension mismatch when switching models)
 
 chunking:
-  chunk_size_tokens: 256  # Max tokens per chunk
+  chunk_size_tokens: 1024  # Max tokens per chunk
   overlap_sentences: 1  # Number of sentences to overlap between chunks
 
 retriever:
   dense_top_k: 20  # Candidates from dense vector search
   sparse_top_k: 20  # Candidates from sparse BM25 search
   hybrid_top_k: 30  # Combined candidates before reranking
-  final_top_k: 5  # Number of final chunks returned
-  score_threshold: 0.7  # Minimum rerank score to include (0.0 = no filter)
+  final_top_k: 10  # Number of final chunks returned
+  score_threshold: 0.5  # Minimum rerank score to include (0.0 = no filter)
   dense_weight: 0.6  # Weight for dense score in hybrid ranking
   sparse_weight: 0.4  # Weight for sparse score in hybrid ranking
   reranker:
     provider: "bge"
     model: "BAAI/bge-reranker-base"
+    local_files_only: true  # true = offline (no Hugging Face calls). Set false once to download model.
     # api_key: "your-cohere-api-key"  # Optional, can use COHERE_API_KEY env var
+
+response_generator:
+  provider: "ollama"  # Options: "ollama" or "openai"
+  model: "llama3.2"
+  temperature: 0.2
+  max_tokens: 4096
+  history_keep: 10
+  metadata_path: "src/response_generator/metadata/prompts.yaml"
+  # For OpenAI:
+  # provider: "openai"
+  # model: "gpt-4o-mini"
+  # api_key: "your-openai-api-key"  # Optional, can use OPENAI_API_KEY env var

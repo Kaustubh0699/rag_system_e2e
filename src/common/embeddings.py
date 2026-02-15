@@ -7,7 +7,7 @@ class EmbeddingError(Exception):
     pass
 
 
-def embed_texts_ollama(texts: List[str], model: str, base_url: str = "http://localhost:11434") -> List[List[float]]:
+def embed_texts_ollama(texts: List[str], model: str, base_url: str = "http://127.0.0.1:11434") -> List[List[float]]:
     try:
         import ollama
 
@@ -29,7 +29,7 @@ def embed_texts(texts: List[str], config: dict) -> List[List[float]]:
 
     if provider == "ollama":
         ollama_config = config.get("ollama", {})
-        base_url = ollama_config.get("base_url", "http://localhost:11434")
+        base_url = ollama_config.get("base_url", "http://127.0.0.1:11434")
         return embed_texts_ollama(texts, model, base_url=base_url)
 
     if provider == "openai":

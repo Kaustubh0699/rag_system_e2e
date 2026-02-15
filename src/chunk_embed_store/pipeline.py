@@ -3,12 +3,34 @@
 import logging
 from pathlib import Path
 import json
+from src.common.config import get_effective_collection_name
 from .chunker import chunk_document, parse_document
 from .config_loader import load_config
 from .embedder import embed_chunks
 from .store import create_store, store_chunks
 
 logger = logging.getLogger(__name__)
+
+# Max tokens per chunk that each embedding model can accept (context window).
+# Chunk size is capped to this so we never exceed the model's limit.
+EMBEDDING_MAX_CONTEXT_TOKENS = {
+    "mxbai-embed-large": 512,
+    "nomic-embed-text": 8192,
+    "text-embedding-3-small": 8191,
+    "text-embedding-3-large": 8191,
+    "text-embedding-ada-002": 8191,
+}
+DEFAULT_EMBEDDING_MAX_CONTEXT = 1024  # Safe default for unknown models
+
+
+def _get_embedding_max_context_tokens(config: dict) -> int:
+    """Return max tokens the embedding model can handle; chunk size must not exceed this."""
+    embedding_config = config.get("embedding", {})
+    explicit = embedding_config.get("max_context_tokens")
+    if explicit is not None:
+        return int(explicit)
+    model = (embedding_config.get("model") or "").strip()
+    return EMBEDDING_MAX_CONTEXT_TOKENS.get(model, DEFAULT_EMBEDDING_MAX_CONTEXT)
 
 
 def ingest_document(
@@ -33,9 +55,18 @@ def ingest_document(
     
     # Chunk document (hierarchical recursive: paragraphs -> lines -> sentences -> tokens)
     chunking_config = config.get("chunking", {})
-    chunk_size_tokens = chunking_config.get("chunk_size_tokens", 1000)
+    requested_chunk_size = chunking_config.get("chunk_size_tokens", 1024)
+    embedding_max_tokens = _get_embedding_max_context_tokens(config)
+    chunk_size_tokens = min(requested_chunk_size, embedding_max_tokens)
+    if requested_chunk_size > embedding_max_tokens:
+        logger.warning(
+            "chunk_size_tokens %s exceeds embedding model limit (%s); capping to %s",
+            requested_chunk_size,
+            embedding_max_tokens,
+            chunk_size_tokens,
+        )
     overlap_sentences = chunking_config.get("overlap_sentences", 2)  # Not used in hierarchical splitting
-    
+
     chunks = chunk_document(document, chunk_size_tokens, overlap_sentences)
     logger.info(f"Created {len(chunks)} chunks")
 
@@ -53,13 +84,13 @@ def ingest_document(
     # Generate embeddings
     embeddings = embed_chunks(chunks, config)
     
-    # Store in ChromaDB
+    # Store in ChromaDB (collection name scoped by embedding model to avoid dimension mismatch)
     chromadb_config = config.get("chromadb", {})
     db_path = chromadb_config.get("db_path", "./chroma_db")
-    collection_name = chromadb_config.get("collection_name", "documents")
-    
-    logger.info(f"Creating ChromaDB store at: {db_path}")
-    print(f"Creating ChromaDB store at: {db_path}")
+    collection_name = get_effective_collection_name(config)
+
+    logger.info(f"Creating ChromaDB store at: {db_path} collection={collection_name}")
+    print(f"Creating ChromaDB store at: {db_path} (collection: {collection_name})")
     collection = create_store(db_path, collection_name)
     store_chunks(chunks, embeddings, collection)
     
