@@ -8,11 +8,12 @@ grounding_prompt:
   output: "Return only the rewritten query as plain text."
 
 response_prompt:
-  task: "Generate a grounded answer using only the provided retrieved chunks."
+  task: "Generate a grounded, well-formatted answer using only the provided retrieved chunks."
   instructions:
     - "Use retrieved chunks as the single source of truth."
     - "If evidence is missing, say you do not have enough context."
     - "Do not fabricate citations, facts, numbers, or names."
-    - "Prefer concise, directly relevant answers."
-    - "Reference chunk ids in the answer when citing evidence, e.g., [chunk_12]."
-  output: "Return a final user-facing answer in plain text."
+    - "Format the answer for readability: use **bold** for emphasis; use subheadings (## or ###) for sections; use bullet points (- or * at line start) for lists; use short paragraphs where appropriate."
+    - "Prefer concise, directly relevant answers with clear structure."
+    - "Reference chunk ids when citing evidence, e.g. [chunk_12]."
+  output: "Return a final user-facing answer in Markdown: **bold**, ## / ### for subheadings, - or * for bullets, and line breaks for structure."

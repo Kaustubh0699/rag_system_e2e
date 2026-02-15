@@ -11,11 +11,12 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from tempfile import gettempdir
 from time import time
-from typing import Dict
+from typing import Dict, List
 
 import yaml
-from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.utils import secure_filename
+import json
 
 from src.common.config import get_effective_collection_name, load_config as load_common_config
 
@@ -56,6 +57,8 @@ class JobStatus:
 
 _jobs: Dict[str, JobStatus] = {}
 _sessions: Dict[str, SessionState] = {}
+_chat_pipelines: Dict[str, object] = {}
+_chat_messages: Dict[str, List[dict]] = {}
 _state_lock = threading.Lock()
 
 
@@ -75,6 +78,17 @@ def create_app() -> Flask:
 
         return render_template("upload.html", email=_sessions[app_session_id].email)
 
+    @app.get("/chat")
+    def chat_page():
+        app_session_id = session.get("app_session_id")
+        if not app_session_id or app_session_id not in _sessions:
+            return redirect(url_for("index"))
+
+        if not _sessions[app_session_id].files:
+            return redirect(url_for("upload_page"))
+
+        return render_template("chat.html", email=_sessions[app_session_id].email)
+
     @app.post("/api/session/start")
     def start_session():
         payload = request.get_json(silent=True) or {}
@@ -83,21 +97,19 @@ def create_app() -> Flask:
         if not email or "@" not in email:
             return jsonify({"error": "Please enter a valid email address."}), 400
 
-        # Create session ID from email hash for persistence
-        email_hash = hashlib.md5(email.encode()).hexdigest()
-        app_session_id = email_hash
-        
+        # Session ID from normalized email so same user always gets same session (case-insensitive)
+        email_normalized = email.strip().lower()
+        app_session_id = hashlib.md5(email_normalized.encode()).hexdigest()
+
         session_dir = SESSION_ROOT / app_session_id
         db_path = session_dir / "chroma_db"
         session_dir.mkdir(parents=True, exist_ok=True)
 
-        # Check if session already exists and load existing files
+        # Check if session already exists in memory, else load from persisted ChromaDB
         existing_files = []
         if app_session_id in _sessions:
-            # Session already in memory, reuse it
             existing_files = _sessions[app_session_id].files
         else:
-            # Try to load existing files from ChromaDB
             existing_files = _load_existing_files(db_path)
 
         with _state_lock:
@@ -216,12 +228,135 @@ def create_app() -> Flask:
     def end_session():
         payload = request.get_json(silent=True) or {}
         delete_data = payload.get("delete_data", False)
-        
+
         app_session_id = session.get("app_session_id")
         if app_session_id:
             _cleanup_session(app_session_id, delete_data=delete_data)
             session.pop("app_session_id", None)
         return jsonify({"message": "Session closed."}), 200
+
+    @app.get("/api/chat/history")
+    def get_chat_history():
+        app_session_id = session.get("app_session_id")
+        if not app_session_id:
+            return jsonify({"error": "No active session."}), 400
+
+        with _state_lock:
+            state = _sessions.get(app_session_id)
+            messages = _chat_messages.get(app_session_id, [])
+
+        if state is None:
+            return jsonify({"error": "Session expired."}), 400
+
+        return jsonify({"messages": messages, "email": state.email}), 200
+
+    @app.post("/api/chat")
+    def chat_with_files():
+        app_session_id = session.get("app_session_id")
+        if not app_session_id:
+            return jsonify({"error": "No active session."}), 400
+
+        payload = request.get_json(silent=True) or {}
+        question = (payload.get("question") or "").strip()
+        if not question:
+            return jsonify({"error": "Please enter a question."}), 400
+
+        with _state_lock:
+            session_state = _sessions.get(app_session_id)
+
+        if session_state is None:
+            return jsonify({"error": "Session expired."}), 400
+
+        if not session_state.files:
+            return jsonify({"error": "Upload at least one document before chatting."}), 400
+
+        try:
+            with _state_lock:
+                pipeline = _chat_pipelines.get(app_session_id)
+
+            if pipeline is None:
+                config_path = _build_session_config(session_state)
+                from src.response_generator.orchestrator import GroundedRAGPipeline
+
+                pipeline = GroundedRAGPipeline(config_path=config_path)
+                with _state_lock:
+                    _chat_pipelines[app_session_id] = pipeline
+
+            response = pipeline.ask(session_id=app_session_id, question=question)
+
+            sources = [{"chunk_id": cid} for cid in response.context_chunk_ids]
+
+            chat_turn = {
+                "question": question,
+                "answer": response.response,
+                "sources": sources,
+            }
+            with _state_lock:
+                _chat_messages.setdefault(app_session_id, []).append(chat_turn)
+
+            return jsonify(chat_turn), 200
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Chat generation failed")
+            return jsonify({"error": f"Failed to generate response: {exc}"}), 500
+
+    @app.post("/api/chat/stream")
+    def chat_stream():
+        app_session_id = session.get("app_session_id")
+        if not app_session_id:
+            return jsonify({"error": "No active session."}), 400
+
+        payload = request.get_json(silent=True) or {}
+        question = (payload.get("question") or "").strip()
+        if not question:
+            return jsonify({"error": "Please enter a question."}), 400
+
+        with _state_lock:
+            session_state = _sessions.get(app_session_id)
+
+        if session_state is None:
+            return jsonify({"error": "Session expired."}), 400
+
+        if not session_state.files:
+            return jsonify({"error": "Upload at least one document before chatting."}), 400
+
+        def generate():
+            try:
+                with _state_lock:
+                    pipeline = _chat_pipelines.get(app_session_id)
+                if pipeline is None:
+                    config_path = _build_session_config(session_state)
+                    from src.response_generator.orchestrator import GroundedRAGPipeline
+                    pipeline = GroundedRAGPipeline(config_path=config_path)
+                    with _state_lock:
+                        _chat_pipelines[app_session_id] = pipeline
+
+                stream = pipeline.ask_stream(session_id=app_session_id, question=question)
+                result = None
+                try:
+                    while True:
+                        token = next(stream)
+                        yield json.dumps({"type": "chunk", "content": token}) + "\n"
+                except StopIteration as e:
+                    result = e.value
+
+                if result is not None:
+                    sources = [{"chunk_id": cid} for cid in result.context_chunk_ids]
+                    yield json.dumps({"type": "done", "sources": sources}) + "\n"
+                    with _state_lock:
+                        _chat_messages.setdefault(app_session_id, []).append({
+                            "question": question,
+                            "answer": result.response,
+                            "sources": sources,
+                        })
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("Chat stream failed")
+                yield json.dumps({"type": "error", "error": str(exc)}) + "\n"
+
+        return Response(
+            generate(),
+            mimetype="application/x-ndjson",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     return app
 
@@ -299,7 +434,7 @@ def _build_session_config(session_state: SessionState) -> Path:
 
 
 def _load_existing_files(db_path: Path) -> list[SessionFileRecord]:
-    """Load existing files from ChromaDB collection."""
+    """Load existing files from ChromaDB (current config collection, or any collection in this session DB)."""
     try:
         import chromadb
         from chromadb.config import Settings
@@ -310,43 +445,46 @@ def _load_existing_files(db_path: Path) -> list[SessionFileRecord]:
         config = load_common_config(BASE_CONFIG_PATH)
         config.setdefault("chromadb", {})
         config["chromadb"]["db_path"] = str(db_path)
-        collection_name = get_effective_collection_name(config)
+        primary_collection_name = get_effective_collection_name(config)
 
         client = chromadb.PersistentClient(
             path=str(db_path),
-            settings=Settings(anonymized_telemetry=False)
+            settings=Settings(anonymized_telemetry=False),
         )
 
+        def files_from_collection(collection) -> list[SessionFileRecord]:
+            results = collection.get()
+            if not results or not results.get("ids"):
+                return []
+            doc_chunks: Dict[str, int] = {}
+            for metadata in (results.get("metadatas") or []):
+                if metadata and "file_name" in metadata:
+                    fn = metadata["file_name"]
+                    doc_chunks[fn] = doc_chunks.get(fn, 0) + 1
+            return [SessionFileRecord(file_name=fn, chunks_created=n) for fn, n in doc_chunks.items()]
+
+        # Try primary collection (matches current embedding model)
         try:
-            collection = client.get_collection(name=collection_name)
-        except Exception:
-            # Collection doesn't exist yet
-            return []
-        
-        # Get all documents from the collection
-        results = collection.get()
-        
-        if not results or not results.get("ids"):
-            return []
-        
-        # Group by document ID to count chunks per file
-        doc_chunks: Dict[str, int] = {}
-        metadatas = results.get("metadatas", [])
-        
-        for metadata in metadatas:
-            if metadata and "file_name" in metadata:
-                file_name = metadata["file_name"]
-                doc_chunks[file_name] = doc_chunks.get(file_name, 0) + 1
-        
-        # Convert to SessionFileRecord list
-        files = [
-            SessionFileRecord(file_name=file_name, chunks_created=chunk_count)
-            for file_name, chunk_count in doc_chunks.items()
-        ]
-        
-        return files
-    except Exception:
-        # If anything fails, return empty list
+            collection = client.get_collection(name=primary_collection_name)
+            files = files_from_collection(collection)
+            if files:
+                return files
+        except Exception as e:
+            logger.debug("Primary collection %s not found or empty: %s", primary_collection_name, e)
+
+        # Fallback: any collection in this DB (e.g. previous embedding model)
+        try:
+            for col in client.list_collections():
+                files = files_from_collection(col)
+                if files:
+                    logger.info("Loaded %s files from collection %s (fallback)", len(files), col.name)
+                    return files
+        except Exception as e:
+            logger.debug("List collections fallback failed: %s", e)
+
+        return []
+    except Exception as e:
+        logger.warning("Failed to load existing files from %s: %s", db_path, e, exc_info=True)
         return []
 
 
@@ -418,6 +556,8 @@ def _cleanup_session(app_session_id: str, delete_data: bool = False) -> None:
         ]
         for job_id in job_ids_to_remove:
             _jobs.pop(job_id, None)
+        _chat_pipelines.pop(app_session_id, None)
+        _chat_messages.pop(app_session_id, None)
 
     if delete_data and state and state.session_dir.exists():
         shutil.rmtree(state.session_dir, ignore_errors=True)

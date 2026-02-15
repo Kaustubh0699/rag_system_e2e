@@ -6,6 +6,7 @@ const statusMessage = document.getElementById("status-message");
 const progressBar = document.getElementById("progress-bar");
 const resultSection = document.getElementById("result");
 const filesBody = document.getElementById("files-body");
+const talkButton = document.getElementById("talk-button");
 
 const setStatus = (message, progress) => {
   statusMessage.textContent = message;
@@ -13,7 +14,15 @@ const setStatus = (message, progress) => {
   document.querySelector(".progress-wrapper").setAttribute("aria-valuenow", progress.toString());
 };
 
+const escapeHtml = (str) => {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+};
+
 const renderFilesTable = (files) => {
+  talkButton.disabled = files.length === 0;
+
   if (!files.length) {
     filesBody.innerHTML = `<tr><td colspan="3">No files processed yet.</td></tr>`;
     return;
@@ -23,9 +32,9 @@ const renderFilesTable = (files) => {
     .map(
       (item) =>
         `<tr>
-          <td>${item.file_name}</td>
-          <td>${item.chunks_created}</td>
-          <td><button class="delete-btn" data-file-name="${item.file_name}">Delete</button></td>
+          <td>${escapeHtml(item.file_name)}</td>
+          <td>${Number(item.chunks_created)}</td>
+          <td><button class="delete-btn" data-file-name="${escapeHtml(item.file_name)}">Delete</button></td>
         </tr>`,
     )
     .join("");
@@ -143,10 +152,11 @@ form.addEventListener("submit", async (event) => {
   fileInput.value = "";
 });
 
-// Don't cleanup session on tab close - keep it persistent
-// User can manually end session if needed
-// window.addEventListener("beforeunload", () => {
-//   navigator.sendBeacon("/api/session/end");
-// });
+// Session is kept persistent; user can end it via a future "End session" action if needed.
+// Do not call session/end on beforeunload or navigating to /chat would log them out.
 
 refreshFiles();
+
+talkButton.addEventListener("click", () => {
+  window.location.href = "/chat";
+});

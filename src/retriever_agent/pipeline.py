@@ -1,5 +1,6 @@
 """Retriever agent: embed query -> hybrid search -> cross-encoder rerank -> keep history."""
 
+import os
 from pathlib import Path
 from typing import List
 
@@ -14,6 +15,12 @@ class RetrieverAgent:
     def __init__(self, config_path: str | Path = "config.yaml"):
         self.config = load_config(config_path)
         retriever_config = self.config.get("retriever", {})
+
+        # Set HF offline before any reranker import (avoids getaddrinfo when offline)
+        reranker_cfg = retriever_config.get("reranker", {})
+        if reranker_cfg.get("local_files_only", True):
+            os.environ["HF_HUB_OFFLINE"] = "1"
+            os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
         self.history_keep = int(retriever_config.get("history_keep", 5))
         self.dense_top_k = int(retriever_config.get("dense_top_k", 20))

@@ -1,8 +1,33 @@
-
 """Cross-encoder reranker for hybrid retrieval candidates."""
 
 import os
+import threading
 from typing import Any, Dict, List
+
+# Load BGE model once per (model_name, local_files_only) and reuse for the process lifetime.
+_bge_model_cache: Dict[tuple, Any] = {}
+_bge_cache_lock = threading.Lock()
+
+
+def _get_bge_model(model_name: str, local_files_only: bool) -> Any:
+    key = (model_name, local_files_only)
+    if key in _bge_model_cache:
+        return _bge_model_cache[key]
+    with _bge_cache_lock:
+        if key in _bge_model_cache:
+            return _bge_model_cache[key]
+        if local_files_only:
+            os.environ["HF_HUB_OFFLINE"] = "1"
+            os.environ["TRANSFORMERS_OFFLINE"] = "1"
+        try:
+            from sentence_transformers import CrossEncoder
+        except ImportError as exc:
+            raise RuntimeError(
+                "sentence-transformers is required for BGE reranking. Run: pip install sentence-transformers"
+            ) from exc
+        model = CrossEncoder(model_name, local_files_only=local_files_only)
+        _bge_model_cache[key] = model
+        return model
 
 
 def rerank_with_bge(
@@ -11,18 +36,7 @@ def rerank_with_bge(
     model_name: str,
     local_files_only: bool = True,
 ) -> List[float]:
-    try:
-        from sentence_transformers import CrossEncoder
-    except ImportError as exc:
-        raise RuntimeError(
-            "sentence-transformers is required for BGE reranking. Run: pip install sentence-transformers"
-        ) from exc
-
-    # Avoid network calls when offline: use cache only (run once online to download model)
-    if local_files_only:
-        os.environ["HF_HUB_OFFLINE"] = "1"
-        os.environ["TRANSFORMERS_OFFLINE"] = "1"
-    model = CrossEncoder(model_name, local_files_only=local_files_only)
+    model = _get_bge_model(model_name, local_files_only)
     pairs = [[query, c["text"]] for c in candidates]
     scores = model.predict(pairs)
     return [float(score) for score in scores]
