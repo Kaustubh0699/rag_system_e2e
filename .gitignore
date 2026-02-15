@@ -20,14 +20,20 @@ uploads/
 .env
 .env.local
 
-# IDE
+# IDE / Editor
 .vscode/
 .idea/
 *.swp
 *.swo
+.cursor/
+.cursorrules
 
-# Jupyter
+# Jupyter / Notebooks (dev and test notebooks; keep out of repo)
 .ipynb_checkpoints/
+test_module.ipynb
+
+# User and sample data (do not commit documents or local data)
+data/
 
 # OS
 .DS_Store
