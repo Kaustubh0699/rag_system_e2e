@@ -39,55 +39,7 @@ The system has two main flows: **ingestion** (document → chunks → embeddings
 <!-- Add your architecture diagram under docs/ and uncomment the line below -->
 <!-- ![Architecture overview](docs/architecture.png) -->
 
-```text
-                    ┌─────────────────────────────────────────────────────────────────┐
-                    │                     config.yaml (single source of truth)         │
-                    └─────────────────────────────────────────────────────────────────┘
-                                              │
-                    ┌─────────────────────────┼─────────────────────────┐
-                    ▼                         ▼                         ▼
-            ┌───────────────┐         ┌───────────────┐         ┌───────────────┐
-            │    common     │         │    common     │         │    common      │
-            │ load_config   │         │ embed_texts   │         │ embed_query    │
-            │ get_effective_│         │ (Ollama/      │         │ (Ollama/       │
-            │ collection_   │         │  OpenAI)      │         │  OpenAI)       │
-            │ name          │         └───────┬───────┘         └───────┬───────┘
-            └───────┬───────┘                 │                         │
-                    │                         │                         │
-    ┌───────────────┴───────────────┐         │                         │
-    ▼                               ▼         ▼                         │
-┌───────────────────────────────────────────────────────────────────────────────┐
-│  INGESTION FLOW (upload)                                                        │
-│  User → Document UI → chunk_embed_store.ingest_document()                      │
-│         Parse (PDF/PPTX) → Chunk (hierarchical, size capped) → Embed → ChromaDB│
-│         Session DB: sessions/<email_hash>/chroma_db                             │
-└───────────────────────────────────────────────────────────────────────────────┘
-                    │
-                    ▼
-            ┌───────────────┐
-            │   ChromaDB    │  (per session or default; collection = documents_<model>)
-            │   (vectors +  │
-            │   metadata)   │
-            └───────┬───────┘
-                    │
-    ┌───────────────┴───────────────┐
-    ▼                               ▼
-┌───────────────────────────────────────────────────────────────────────────────┐
-│  QUERY FLOW (chat)                                                             │
-│  User question → Document UI → GroundedRAGPipeline.ask_stream()               │
-│     → RetrieverAgent.retrieve(): embed query → hybrid search → BGE rerank      │
-│     → ResponseGenerator.generate_stream(): ground question → LLM answer        │
-│     → Stream NDJSON to browser                                                 │
-└───────────────────────────────────────────────────────────────────────────────┘
-                    │
-        ┌───────────┼───────────┐
-        ▼           ▼           ▼
-  ┌──────────┐ ┌──────────┐ ┌──────────┐
-  │ ChromaDB │ │ BGE      │ │ LLM      │
-  │ (search) │ │ reranker │ │ (Ollama/ │
-  │          │ │ (cached) │ │  OpenAI) │
-  └──────────┘ └──────────┘ └──────────┘
-```
+![Alt text for the diagram](assets/architecture.png)
 
 ### Flow summary
 
