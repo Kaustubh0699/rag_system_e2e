@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Talk With Your Files</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <main class="container chat-container">
+      <div class="chat-header">
+        <h1>Talk with Your Files</h1>
+        <p class="subtitle">Session email: <strong>{{ email }}</strong></p>
+        <a class="secondary-link" href="{{ url_for('upload_page') }}">← Back to upload</a>
+      </div>
+
+      <section id="chat-messages" class="chat-messages" aria-live="polite"></section>
+
+      <form id="chat-form" class="chat-form">
+        <textarea
+          id="chat-input"
+          rows="2"
+          placeholder="Ask a question about your uploaded documents..."
+          required
+        ></textarea>
+        <button id="chat-send" type="submit">Send</button>
+      </form>
+
+      <section id="chat-error" class="result error hidden"></section>
+    </main>
+
+    <script src="{{ url_for('static', filename='chat.js') }}"></script>
+  </body>
+</html>

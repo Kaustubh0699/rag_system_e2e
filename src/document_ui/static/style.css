@@ -90,6 +90,156 @@ button:disabled {
   margin-top: 1.5rem;
 }
 
+.chat-entry {
+  margin-top: 1.25rem;
+}
+
+.chat-container {
+  max-width: 900px;
+}
+
+.chat-header {
+  margin-bottom: 1rem;
+}
+
+.secondary-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  color: #2e6cf6;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.chat-messages {
+  border: 1px solid #dce1ec;
+  border-radius: 12px;
+  background: #f8f9fd;
+  min-height: 420px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.chat-message {
+  max-width: 80%;
+  border-radius: 12px;
+  padding: 0.8rem 0.9rem;
+  line-height: 1.45;
+}
+
+.chat-message.user {
+  align-self: flex-end;
+  background: #2e6cf6;
+  color: #fff;
+}
+
+.chat-message.assistant {
+  align-self: flex-start;
+  background: #fff;
+  border: 1px solid #dce1ec;
+}
+
+.chat-message p {
+  margin: 0 0 0.5rem 0;
+}
+
+.chat-message p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-message-body {
+  word-wrap: break-word;
+}
+
+.chat-message-body p {
+  margin: 0 0 0.5rem 0;
+}
+
+.chat-message-body p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-message-body ul,
+.chat-message-body ul.chat-list {
+  margin: 0.5rem 0 0.75rem 1.25rem;
+  padding-left: 1.25rem;
+  list-style-type: disc;
+}
+
+.chat-message-body ol {
+  margin: 0.5rem 0 0.75rem 1.25rem;
+  padding-left: 1.5rem;
+  list-style-type: decimal;
+}
+
+.chat-message-body li {
+  margin: 0.25rem 0;
+  display: list-item;
+}
+
+.chat-message-body strong {
+  font-weight: 700;
+}
+
+.chat-message-body .chat-heading,
+.chat-message-body h2,
+.chat-message-body h3,
+.chat-message-body h4 {
+  font-weight: 600;
+  margin: 0.75rem 0 0.4rem 0;
+  line-height: 1.3;
+}
+
+.chat-message-body h2.chat-heading,
+.chat-message-body h2 {
+  font-size: 1.1em;
+  margin-top: 1rem;
+}
+
+.chat-message-body h2:first-child,
+.chat-message-body h3:first-child,
+.chat-message-body h4:first-child {
+  margin-top: 0;
+}
+
+.chat-message-body h3.chat-heading,
+.chat-message-body h3 {
+  font-size: 1.05em;
+}
+
+.chat-message-body h4.chat-heading,
+.chat-message-body h4 {
+  font-size: 1em;
+}
+
+.chat-message-body[aria-busy="true"] {
+  color: #5b6271;
+  font-style: italic;
+}
+
+.chat-sources {
+  display: block;
+  margin-top: 0.5rem;
+  color: #5b6271;
+}
+
+.chat-form {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.75rem;
+}
+
+#chat-input {
+  flex: 1;
+  border: 1px solid #dce1ec;
+  border-radius: 8px;
+  padding: 0.7rem;
+  resize: vertical;
+}
+
 #files-table {
   width: 100%;
   border-collapse: collapse;

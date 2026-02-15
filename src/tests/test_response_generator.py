@@ -45,6 +45,39 @@ class ResponseGeneratorTests(unittest.TestCase):
         self.assertEqual(turns[0].user_question, "q1")
         self.assertEqual(turns[1].user_question, "q2")
 
+def test_generate_stream_yields_tokens_and_updates_history(self):
+        calls = []
+
+        def fake_call(prompt: str) -> str:
+            calls.append(prompt)
+            return "standalone rewritten query"
+
+        def fake_stream(question: str, enhanced_query: str, chunk_rows):
+            self.assertTrue(question)
+            self.assertTrue(enhanced_query)
+            self.assertTrue(chunk_rows)
+            yield "Grounded "
+            yield "answer"
+
+        self.generator._call_llm = fake_call  # type: ignore[method-assign]
+        self.generator._stream_grounded_answer = fake_stream  # type: ignore[method-assign]
+
+        stream = self.generator.generate_stream(
+            session_id="session-stream",
+            question="What does it say about latency?",
+            retrieved_chunks=[{"chunk_id": "chunk_1", "text": "Latency target is 200ms."}],
+        )
+
+        pieces = []
+        try:
+            while True:
+                pieces.append(next(stream))
+        except StopIteration as done:
+            response = done.value
+
+        self.assertEqual("".join(pieces), "Grounded answer")
+        self.assertEqual(response.response, "Grounded answer")
+        self.assertEqual(len(self.generator.session_histories["session-stream"]), 1)
 
 if __name__ == "__main__":
     unittest.main()
