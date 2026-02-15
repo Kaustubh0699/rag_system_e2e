@@ -17,6 +17,8 @@ import yaml
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.utils import secure_filename
 
+from src.common.config import get_effective_collection_name, load_config as load_common_config
+
 logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {".pdf", ".ppt", ".pptx"}
@@ -282,12 +284,12 @@ def _run_ingestion_job(job_id: str, file_path: Path, app_session_id: str, ingest
 
 
 def _build_session_config(session_state: SessionState) -> Path:
-    with BASE_CONFIG_PATH.open("r", encoding="utf-8") as config_file:
-        config = yaml.safe_load(config_file) or {}
+    # Use common config loader to ensure consistency
+    config = load_common_config(BASE_CONFIG_PATH)
 
+    # Override chromadb path for this session (collection name stays embedding-scoped via get_effective_collection_name)
     config.setdefault("chromadb", {})
     config["chromadb"]["db_path"] = str(session_state.db_path)
-    config["chromadb"]["collection_name"] = "documents"
 
     config_path = session_state.session_dir / "session_config.yaml"
     with config_path.open("w", encoding="utf-8") as config_file:
@@ -301,17 +303,22 @@ def _load_existing_files(db_path: Path) -> list[SessionFileRecord]:
     try:
         import chromadb
         from chromadb.config import Settings
-        
+
         if not db_path.exists():
             return []
-        
+
+        config = load_common_config(BASE_CONFIG_PATH)
+        config.setdefault("chromadb", {})
+        config["chromadb"]["db_path"] = str(db_path)
+        collection_name = get_effective_collection_name(config)
+
         client = chromadb.PersistentClient(
             path=str(db_path),
             settings=Settings(anonymized_telemetry=False)
         )
-        
+
         try:
-            collection = client.get_collection(name="documents")
+            collection = client.get_collection(name=collection_name)
         except Exception:
             # Collection doesn't exist yet
             return []
@@ -348,17 +355,22 @@ def _delete_file_from_db(db_path: Path, file_name: str) -> int:
     try:
         import chromadb
         from chromadb.config import Settings
-        
+
         if not db_path.exists():
             return 0
-        
+
+        config = load_common_config(BASE_CONFIG_PATH)
+        config.setdefault("chromadb", {})
+        config["chromadb"]["db_path"] = str(db_path)
+        collection_name = get_effective_collection_name(config)
+
         client = chromadb.PersistentClient(
             path=str(db_path),
             settings=Settings(anonymized_telemetry=False)
         )
-        
+
         try:
-            collection = client.get_collection(name="documents")
+            collection = client.get_collection(name=collection_name)
         except Exception:
             # Collection doesn't exist
             return 0

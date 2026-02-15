@@ -223,6 +223,10 @@ pip install sentence-transformers>=3.0.0
 - Check disk space (model is ~400MB)
 - Model will be cached in `~/.cache/huggingface/`
 
+**`[Errno 11001] getaddrinfo failed` (offline):**
+- The BGE reranker loads from Hugging Face by default. For **offline use**, set `retriever.reranker.local_files_only: true` in `config.yaml` (this is the default). Run **once with internet** to download the model, then the app works without network.
+- Use `base_url: "http://127.0.0.1:11434"` for Ollama so no DNS lookup is needed (localhost can trigger getaddrinfo on some setups).
+
 ### Performance Issues
 
 **Slow retrieval:**

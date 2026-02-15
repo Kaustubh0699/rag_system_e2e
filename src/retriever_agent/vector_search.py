@@ -8,6 +8,8 @@ from typing import Any, Dict, List
 import chromadb
 from chromadb.config import Settings
 
+from src.common.config import get_effective_collection_name
+
 STOPWORDS = {
     "a", "an", "the", "is", "are", "was", "were", "to", "of", "in", "on", "for", "with", "and", "or", "by", "as", "at", "be", "it", "this", "that",
 }
@@ -21,7 +23,7 @@ def tokenize(text: str) -> List[str]:
 def get_collection(config: dict):
     chromadb_config = config.get("chromadb", {})
     db_path = Path(chromadb_config.get("db_path", "./chroma_db")).resolve()
-    collection_name = chromadb_config.get("collection_name", "documents")
+    collection_name = get_effective_collection_name(config)
 
     client = chromadb.PersistentClient(
         path=str(db_path),
